@@ -195,6 +195,75 @@
   .mgrid .shot.fade.in:nth-child(even) { transform: translateY(2.4rem); }
   .mgrid img { aspect-ratio: 3 / 4; }
 
+  /* ---------- Results ---------- */
+  .results { padding: 4vh 0 12vh; }
+  .stat-strip {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2rem; margin: 3rem 0 5rem;
+    text-align: center;
+  }
+  .stat-strip .stat b {
+    display: block;
+    font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1;
+    color: var(--ink);
+  }
+  .stat-strip .stat span {
+    display: block; margin-top: .6rem;
+    font-size: .74rem; letter-spacing: .3em; text-transform: uppercase;
+    color: #8a8b93;
+  }
+  .hl-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1.6rem; margin-bottom: 6rem;
+  }
+  .hl {
+    background: #fff; border-radius: 2px;
+    padding: 2rem 1.6rem 1.8rem;
+    box-shadow: 0 18px 44px -24px rgba(25,26,33,.25);
+    border-top: 3px solid var(--violet);
+  }
+  .hl .medal {
+    font-family: 'Fraunces', serif; font-size: 2.2rem; font-weight: 300;
+    color: var(--violet); line-height: 1;
+  }
+  .hl h3 { font-size: 1.05rem; margin: .9rem 0 .35rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .hl p { font-size: .85rem; color: #6b6c74; line-height: 1.55; }
+  .season { margin-top: 3.6rem; }
+  .season h3 {
+    font-size: clamp(1.3rem, 2.4vw, 1.8rem); font-weight: 300;
+    padding-bottom: .8rem; border-bottom: 1px solid #dcdad3;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .season h3 small {
+    font-family: 'Inter', sans-serif; font-size: .72rem;
+    letter-spacing: .26em; text-transform: uppercase; color: #8a8b93;
+  }
+  .rtable { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  .rtable td {
+    padding: .85rem .6rem .85rem 0;
+    border-bottom: 1px solid #e7e5df;
+    vertical-align: baseline;
+  }
+  .rtable td.d { white-space: nowrap; color: #8a8b93; font-size: .78rem; width: 7.5rem; }
+  .rtable td.e b { font-weight: 600; }
+  .rtable td.e span { color: #8a8b93; }
+  .rtable td.r { text-align: right; white-space: nowrap; width: 8rem; }
+  .chip {
+    display: inline-block; min-width: 2.2em; text-align: center;
+    padding: .18em .5em; margin-left: .3em;
+    border-radius: 99px; font-size: .74rem; font-weight: 600;
+    background: var(--cloud); color: #55565e;
+  }
+  .chip.p1 { background: var(--ink); color: #fff; }
+  .chip.p2 { background: var(--violet); color: #fff; }
+  .chip.p3 { background: var(--violet-soft); color: #fff; }
+  @media (max-width: 820px) {
+    .hl-grid { grid-template-columns: 1fr 1fr; }
+    .stat-strip { gap: 1rem; }
+    .rtable td.e span.loc { display: block; }
+  }
+
   /* ---------- Footer ---------- */
   footer.site {
     background: var(--ink); color: #cfcdd6;
@@ -282,6 +351,85 @@
       <figure class="shot fade"><div class="shot-frame"><img src="images/migros.jpg" alt="Briar wearing a Swiss race bib" loading="lazy"></div><figcaption>Racing in Switzerland</figcaption></figure>
       <figure class="shot fade"><div class="shot-frame"><img src="images/start-area.jpg" alt="Briar in the start area before a run" loading="lazy"></div><figcaption>Start area nerves</figcaption></figure>
       <figure class="shot fade"><div class="shot-frame"><img src="images/snow-cave.jpg" alt="Briar playing in a snow cave" loading="lazy"></div><figcaption>Still a kid</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="results">
+  <div class="wrap">
+    <p class="kicker fade">The record</p>
+
+    <div class="stat-strip fade">
+      <div class="stat"><b>4</b><span>Seasons racing</span></div>
+      <div class="stat"><b>32</b><span>Race starts</span></div>
+      <div class="stat"><b>22</b><span>Podium events</span></div>
+    </div>
+
+    <div class="hl-grid">
+      <div class="hl fade"><div class="medal">3rd &times;2</div><h3>NZ Junior Champs 2024</h3><p>Bronze in both giant slalom and slalom at Coronet Peak, backing up silver-placed runs at the 2023 champs.</p></div>
+      <div class="hl fade"><div class="medal">2nd</div><h3>Welsh Champs 2024</h3><p>Giant slalom silver at Champ&eacute;ry, Switzerland, against a European field.</p></div>
+      <div class="hl fade"><div class="medal">2nd</div><h3>Coupe Raiffeisen</h3><p>Giant slalom runner-up at Les Diablerets in the Swiss regional cup series.</p></div>
+      <div class="hl fade"><div class="medal">1st &times;4</div><h3>Perfect weekends</h3><p>Won every slalom run at Cardrona and the Remarkables Interfields in 2024.</p></div>
+    </div>
+
+    <div class="season fade">
+      <h3>2025 <small>U12 &middot; New Zealand</small></h3>
+      <table class="rtable">
+        <tr><td class="d">20 Sep</td><td class="e"><b>Junior Interfield</b> Slalom <span class="loc">&middot; Coronet Peak</span></td><td class="r"><span class="chip p3">3rd</span><span class="chip p3">3rd</span></td></tr>
+        <tr><td class="d">17 Aug</td><td class="e"><b>Junior Interfield</b> Giant Slalom <span class="loc">&middot; Treble Cone</span></td><td class="r"><span class="chip p2">2nd</span><span class="chip p3">3rd</span></td></tr>
+        <tr><td class="d">27 Jul</td><td class="e"><b>Junior Interfield</b> Kombi <span class="loc">&middot; Cardrona</span></td><td class="r"><span class="chip p3">3rd</span></td></tr>
+        <tr><td class="d">18 Jul</td><td class="e"><b>NZ Junior Champs</b> Giant Slalom <span class="loc">&middot; Remarkables</span></td><td class="r"><span class="chip">8th</span></td></tr>
+        <tr><td class="d">13 Jul</td><td class="e"><b>Junior Interfield</b> Dual Slalom <span class="loc">&middot; Remarkables</span></td><td class="r"><span class="chip p2">2nd</span><span class="chip p2">2nd</span></td></tr>
+      </table>
+    </div>
+
+    <div class="season fade">
+      <h3>2024 <small>U10&ndash;U12 &middot; New Zealand</small></h3>
+      <table class="rtable">
+        <tr><td class="d">29 Sep</td><td class="e"><b>Junior Interfield</b> Giant Slalom, racing up U12 <span class="loc">&middot; Mt Hutt</span></td><td class="r"><span class="chip p3">3rd</span><span class="chip p2">2nd</span></td></tr>
+        <tr><td class="d">28 Sep</td><td class="e"><b>Junior Interfield</b> Slalom <span class="loc">&middot; Mt Hutt</span></td><td class="r"><span class="chip p3">3rd</span><span class="chip">4th</span></td></tr>
+        <tr><td class="d">15 Sep</td><td class="e"><b>Junior Interfield</b> Dual Slalom <span class="loc">&middot; Remarkables</span></td><td class="r"><span class="chip p2">2nd</span></td></tr>
+        <tr><td class="d">14 Sep</td><td class="e"><b>Junior Interfield</b> Slalom <span class="loc">&middot; Remarkables</span></td><td class="r"><span class="chip p1">1st</span><span class="chip p1">1st</span></td></tr>
+        <tr><td class="d">24 Aug</td><td class="e"><b>Junior Interfield</b> Giant Slalom <span class="loc">&middot; Treble Cone</span></td><td class="r"><span class="chip p3">3rd</span><span class="chip p3">3rd</span></td></tr>
+        <tr><td class="d">28 Jul</td><td class="e"><b>Junior Interfield</b> Slalom <span class="loc">&middot; Cardrona</span></td><td class="r"><span class="chip p1">1st</span><span class="chip p1">1st</span></td></tr>
+        <tr><td class="d">21 Jul</td><td class="e"><b>NZ Junior Champs</b> Slalom <span class="loc">&middot; Coronet Peak</span></td><td class="r"><span class="chip p3">3rd</span><span class="chip p3">3rd</span></td></tr>
+        <tr><td class="d">20 Jul</td><td class="e"><b>NZ Junior Champs</b> Giant Slalom <span class="loc">&middot; Coronet Peak</span></td><td class="r"><span class="chip p3">3rd</span><span class="chip p3">3rd</span></td></tr>
+      </table>
+    </div>
+
+    <div class="season fade">
+      <h3>2024 <small>Northern winter &middot; Switzerland</small></h3>
+      <table class="rtable">
+        <tr><td class="d">27 Jan</td><td class="e"><b>Grand Prix Migros</b> Slalom <span class="loc">&middot; Nendaz</span></td><td class="r"><span class="chip">4th</span></td></tr>
+        <tr><td class="d">26 Jan</td><td class="e"><b>Welsh Champs</b> Slalom <span class="loc">&middot; Champ&eacute;ry</span></td><td class="r"><span class="chip">4th</span><span class="chip">4th</span></td></tr>
+        <tr><td class="d">24 Jan</td><td class="e"><b>Welsh Champs</b> Giant Slalom <span class="loc">&middot; Champ&eacute;ry</span></td><td class="r"><span class="chip p2">2nd</span></td></tr>
+        <tr><td class="d">21 Jan</td><td class="e"><b>Coupe Raiffeisen</b> Giant Slalom <span class="loc">&middot; Les Diablerets</span></td><td class="r"><span class="chip p2">2nd</span></td></tr>
+        <tr><td class="d">13 Jan</td><td class="e"><b>Coupe Raiffeisen</b> Slalom <span class="loc">&middot; Rougemont</span></td><td class="r"><span class="chip">DNF</span></td></tr>
+      </table>
+    </div>
+
+    <div class="season fade">
+      <h3>2023 <small>U10 &middot; New Zealand</small></h3>
+      <table class="rtable">
+        <tr><td class="d">9 Sep</td><td class="e"><b>South Island Champs</b> Giant Slalom <span class="loc">&middot; Mt Hutt</span></td><td class="r"><span class="chip">4th</span><span class="chip">5th</span></td></tr>
+        <tr><td class="d">7 Sep</td><td class="e"><b>Battle of the Basin</b> Dual Slalom <span class="loc">&middot; Coronet Peak</span></td><td class="r"><span class="chip">4th</span><span class="chip">4th</span></td></tr>
+        <tr><td class="d">26 Aug</td><td class="e"><b>Junior Interfield</b> Slalom <span class="loc">&middot; Treble Cone</span></td><td class="r"><span class="chip">4th</span><span class="chip">4th</span></td></tr>
+        <tr><td class="d">30 Jul</td><td class="e"><b>Junior Interfield</b> Slalom stubbies <span class="loc">&middot; Cardrona</span></td><td class="r"><span class="chip">6th</span><span class="chip">4th</span></td></tr>
+        <tr><td class="d">22 Jul</td><td class="e"><b>NZ Junior Champs</b> Dual Slalom <span class="loc">&middot; Remarkables</span></td><td class="r"><span class="chip p2">2nd</span><span class="chip p2">2nd</span></td></tr>
+        <tr><td class="d">21 Jul</td><td class="e"><b>NZ Junior Champs</b> Giant Slalom <span class="loc">&middot; Remarkables</span></td><td class="r"><span class="chip p2">2nd</span><span class="chip p2">2nd</span></td></tr>
+      </table>
+    </div>
+
+    <div class="season fade">
+      <h3>2022 <small>U8 &middot; New Zealand &middot; first season racing</small></h3>
+      <table class="rtable">
+        <tr><td class="d">1 Oct</td><td class="e"><b>Junior Interfield</b> Giant Slalom <span class="loc">&middot; Cardrona</span></td><td class="r"><span class="chip p1">1st</span><span class="chip p2">2nd</span></td></tr>
+        <tr><td class="d">17 Sep</td><td class="e"><b>Junior Interfield</b> Slalom <span class="loc">&middot; Remarkables</span></td><td class="r"><span class="chip p3">3rd</span><span class="chip p1">1st</span></td></tr>
+        <tr><td class="d">8 Sep</td><td class="e"><b>Battle of the Basin</b> Dual Slalom <span class="loc">&middot; Coronet Peak</span></td><td class="r"><span class="chip p3">3rd</span></td></tr>
+        <tr><td class="d">21 Aug</td><td class="e"><b>Junior Interfield</b> Giant Slalom <span class="loc">&middot; Treble Cone</span></td><td class="r"><span class="chip p2">2nd</span><span class="chip p2">2nd</span></td></tr>
+        <tr><td class="d">24 Jul</td><td class="e"><b>NZ Junior Champs</b> Dual Slalom <span class="loc">&middot; Coronet Peak</span></td><td class="r"><span class="chip p2">2nd</span><span class="chip p1">1st</span></td></tr>
+        <tr><td class="d">23 Jul</td><td class="e"><b>Junior Interfield</b> Dual Slalom <span class="loc">&middot; Coronet Peak</span></td><td class="r"><span class="chip p2">2nd</span><span class="chip p1">1st</span></td></tr>
+      </table>
     </div>
   </div>
 </section>
