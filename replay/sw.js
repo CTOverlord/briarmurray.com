@@ -1,5 +1,7 @@
 // Sport Replay offline support. Scope: /replay/ only.
-const CACHE = 'sport-replay-b0d787807c';
+const CACHE = 'sport-replay-8f5eda5a9e';
+// Body tracking files (23 MB) live in their own cache, kept across page updates and never re-downloaded.
+const POSE_CACHE = 'replay-pose-1.1.1';
 const SHELL = ['./', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -13,7 +15,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('sport-replay-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => (k.startsWith('sport-replay-') && k !== CACHE) || (k.startsWith('replay-pose-') && k !== POSE_CACHE)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -36,8 +38,22 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Icons, manifest and fonts: saved copy first, refreshed in the background.
   const sameOrigin = url.origin === self.location.origin;
+
+  // Body tracking files never change at a given address: saved copy, or fetch once and keep.
+  if (sameOrigin && url.pathname.indexOf('/pose/') >= 0) {
+    e.respondWith((async () => {
+      const cache = await caches.open(POSE_CACHE);
+      const saved = await cache.match(req);
+      if (saved) return saved;
+      const res = await fetch(req);
+      if (res.ok) await cache.put(req, res.clone());
+      return res;
+    })());
+    return;
+  }
+
+  // Icons, manifest and fonts: saved copy first, refreshed in the background.
   const fonts = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (!sameOrigin && !fonts) return;
   e.respondWith((async () => {

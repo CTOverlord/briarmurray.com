@@ -11,6 +11,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>window.SPORT_REPLAY_POSE={bundle:"./pose/vision_bundle.js",wasm:"./pose/wasm/",model:"./pose/pose_landmarker_full.task",local:true};</script>
 <title>Sport Replay</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,6 +39,8 @@
   --focus:#d98e00;
   --shadow:rgba(10,20,30,.16);
   --scrim:rgba(0,0,0,.45);
+  --side-l:#8a4e00;
+  --side-r:#00608a;
   --font-ui:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --font-num:"Barlow Condensed","Arial Narrow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --radius:12px;
@@ -46,14 +49,14 @@
   :root:not([data-theme="light"]){
     --bg:#090e12;--panel:#10181e;--raised:#16212a;--line:#24323c;--ink:#e1e9ee;--muted:#8a9ca7;
     --accent:#6c95ff;--accent-ink:#07112a;--accent-soft:#1b2b4c;--gate-red:#ff5c68;--gate-blue:#6c95ff;
-    --stage:#000000;--hud:rgba(0,0,0,.66);--hud-ink:#eef3f6;--focus:#ffbe3d;--shadow:rgba(0,0,0,.5);--scrim:rgba(0,0,0,.6);
+    --stage:#000000;--hud:rgba(0,0,0,.66);--hud-ink:#eef3f6;--focus:#ffbe3d;--shadow:rgba(0,0,0,.5);--scrim:rgba(0,0,0,.6);--side-l:#ffb21e;--side-r:#35d0ff;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#090e12;--panel:#10181e;--raised:#16212a;--line:#24323c;--ink:#e1e9ee;--muted:#8a9ca7;
   --accent:#6c95ff;--accent-ink:#07112a;--accent-soft:#1b2b4c;--gate-red:#ff5c68;--gate-blue:#6c95ff;
-  --stage:#000000;--hud:rgba(0,0,0,.66);--hud-ink:#eef3f6;--focus:#ffbe3d;--shadow:rgba(0,0,0,.5);--scrim:rgba(0,0,0,.6);
+  --stage:#000000;--hud:rgba(0,0,0,.66);--hud-ink:#eef3f6;--focus:#ffbe3d;--shadow:rgba(0,0,0,.5);--scrim:rgba(0,0,0,.6);--side-l:#ffb21e;--side-r:#35d0ff;
   color-scheme:dark;
 }
 
@@ -106,6 +109,9 @@ svg{flex:none}
 .zoomer{position:absolute;inset:0;transform-origin:0 0}
 .zoomer video{display:block;width:100%;height:100%;object-fit:contain;background:var(--stage)}
 .pane.is-flipped .zoomer video{transform:scaleX(-1)}
+.overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.pose-note{position:absolute;left:8px;right:8px;bottom:8px;z-index:2;display:flex;pointer-events:none}
+.pose-note .chip{height:auto;min-height:30px;padding:6px 11px;white-space:normal;line-height:1.25;text-wrap:balance}
 
 .hud{position:absolute;left:8px;right:8px;top:8px;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;z-index:2;pointer-events:none}
 .hud > *{pointer-events:auto}
@@ -140,6 +146,13 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none}
 .dot.red{background:var(--gate-red)}
 .dot.blue{background:var(--gate-blue)}
+.bodyread{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;min-height:22px;color:var(--muted);font-size:13px}
+.br-item{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}
+.br-k{font:600 11px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase}
+.br-v{font:600 19px/1 var(--font-num);font-variant-numeric:tabular-nums;color:var(--ink)}
+.br-s{font:700 11px/1 var(--font-ui)}
+.br-l{color:var(--side-l)}
+.br-r{color:var(--side-r)}
 
 .timeline{position:relative;height:30px}
 #timeline{position:absolute;inset:0;width:100%;height:30px;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer;touch-action:pan-y}
@@ -184,6 +197,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
 .mbtn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 #markA.is-set{border-color:var(--gate-red)}
 #markB.is-set{border-color:var(--gate-blue)}
+.bodyrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 44px;gap:8px}
 .linkrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .linkrow .mbtn{padding:0 16px}
 .hint{margin:0;flex:1 1 160px;min-width:0;color:var(--muted);font-size:13px}
@@ -248,6 +262,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
   <section class="stage" id="stage" data-arrange="single" aria-label="Video">
     <div class="pane is-active" data-pane="0">
       <div class="viewport"><div class="zoomer"><video playsinline muted preload="auto"></video></div></div>
+      <canvas class="overlay" aria-hidden="true"></canvas>
       <div class="hud" hidden>
         <span class="chip hud-name"></span>
         <span class="chip hud-frame" hidden></span>
@@ -257,6 +272,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         <button class="chip hud-flip" type="button" aria-pressed="false" aria-label="Flip the picture"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16" stroke-dasharray="2 2.6"/><path class="solid" d="M8.5 8L4 12l4.5 4z"/><path d="M15.5 8L20 12l-4.5 4z"/></svg><span class="lbl">Flip</span></button>
         <button class="chip hud-change" type="button" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path class="solid" d="M10 9v6l5-3z"/></svg><span class="lbl">Change</span></button>
       </div>
+      <div class="pose-note" hidden><span class="chip"></span></div>
       <div class="pane-msg">
         <p class="msg-title">Opening</p>
         <p class="msg-text"></p>
@@ -265,6 +281,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
     </div>
     <div class="pane" data-pane="1" hidden>
       <div class="viewport"><div class="zoomer"><video playsinline muted preload="auto"></video></div></div>
+      <canvas class="overlay" aria-hidden="true"></canvas>
       <div class="hud" hidden>
         <span class="chip hud-name"></span>
         <span class="chip hud-frame" hidden></span>
@@ -274,6 +291,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         <button class="chip hud-flip" type="button" aria-pressed="false" aria-label="Flip the picture"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16" stroke-dasharray="2 2.6"/><path class="solid" d="M8.5 8L4 12l4.5 4z"/><path d="M15.5 8L20 12l-4.5 4z"/></svg><span class="lbl">Flip</span></button>
         <button class="chip hud-change" type="button" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path class="solid" d="M10 9v6l5-3z"/></svg><span class="lbl">Change</span></button>
       </div>
+      <div class="pose-note" hidden><span class="chip"></span></div>
       <div class="pane-msg">
         <p class="msg-title">Open a second clip</p>
         <p class="msg-text"></p>
@@ -292,6 +310,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       </div>
       <div class="ro-meta"><span id="roFps">– fps</span> · <span id="roSpeed">Normal speed</span></div>
     </div>
+    <div class="bodyread" id="bodyRead" hidden></div>
     <div class="timeline">
       <input type="range" id="timeline" min="0" max="0" step="1" value="0" aria-label="Position in the clip" disabled>
       <span class="tl-range" id="tlRange" hidden></span>
@@ -344,6 +363,15 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         <button class="mbtn" id="clearBtn" type="button" aria-label="Clear Start and End" disabled><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
     </div>
+    <div class="group">
+      <span class="group-label">Body</span>
+      <div class="bodyrow">
+        <button class="mbtn" id="bodyBtn" type="button" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2.3"/><path d="M12 7.6v6.4M12 9.6l-4.6 3.1M12 9.6l4.6 2.6M12 14l-3.6 6.6M12 14l3.6 6.6"/></svg>Body</button>
+        <button class="mbtn" id="sportBtn" type="button" aria-label="Angles for ski. Tap for cricket."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/></svg><span class="lbl">Ski</span></button>
+        <button class="mbtn" id="angleBtn" type="button" aria-pressed="false" disabled><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20L17 5M4 20h16"/><path d="M11 20a7 7 0 0 0-2.3-5.2"/></svg>Angle</button>
+        <button class="mbtn" id="bodyClear" type="button" aria-label="Clear your angles and dot fixes" disabled><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+    </div>
     <div class="tip" id="fpsTip" hidden>
       <p>This clip is 30 frames a second. Filming at 60 gives you twice as many frames to step through.</p>
       <button class="btn" id="tipOk" type="button">Got it</button>
@@ -368,9 +396,11 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       <dt>Moment</dt><dd>Start and End mark a moment and show the time between them. Loop replays it.</dd>
       <dt>Zoom</dt><dd>Pinch the picture, drag to look around, then Reset zoom. Flip mirrors the picture, handy for a left turn against a right turn, or a left-hander against a right-hander.</dd>
       <dt>Compare</dt><dd>Open a second clip, step each one to the same moment (ball release, a gate), then Link clips so they play and step together. Tap a clip to choose which one the buttons move.</dd>
-      <dt>Keys</dt><dd>Space plays and pauses, ← and → step one frame, Shift with an arrow steps five, [ and ] set Start and End, L loops.</dd>
+      <dt>Body</dt><dd>Tap Body for a stick figure on the athlete, with the angles at the knees and hips (Ski) or the knees and elbows (Cricket), and a dotted line straight down from the head. Tap Ski to switch to Cricket. A dot in the wrong place? Drag it. Two people in shot? Pinch to zoom in on yours and it follows them. Under the picture, Angulation is how far the upper body tips against the legs, and Body lean is how far the whole body leans from upright. The tracking runs on this device: nothing is uploaded.</dd>
+      <dt>Angle</dt><dd>Tap Angle, then tap one end, the corner and the other end, to measure anything: a bat, a pole, the slope. Drag any point to adjust it. ✕ clears your angles and dot fixes.</dd>
+      <dt>Keys</dt><dd>Space plays and pauses, ← and → step one frame, Shift with an arrow steps five, [ and ] set Start and End, L loops, B turns Body on and off, A starts an angle.</dd>
     </dl>
-    <p class="help-tip">Film at 60 frames a second for twice as many frames to step through. The bouncing ball is a sample to try the buttons on.</p>
+    <p class="help-tip">Angles are measured flat on the screen. Knee and hip bend read true when the clip is filmed side-on; lean and angulation read true when it is filmed from in front or behind. Film at 60 frames a second for twice as many frames to step through. The bouncing ball is a sample to try the buttons on. Body needs one of your own clips.</p>
   </div>
 </div>
 
@@ -548,6 +578,275 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
     return 'Something stopped the video opening. Try again, or pick another clip.';
   }
 
+  /* ---------- body tracking ----------
+     Google's MediaPipe pose model finds 33 body points in a picture. It runs on this device, so clips are
+     never uploaded. The public copy hosts the library and model itself (build_public.py sets
+     SPORT_REPLAY_POSE); anywhere else they come from the CDN. Angles are measured flat on the screen. */
+  const POSE_SRC = Object.assign({
+    bundle: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.1/vision_bundle.mjs',
+    wasm: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.1/wasm/',
+    model: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
+    local: false
+  }, window.SPORT_REPLAY_POSE || {});
+  const POSE_BYTES = 13519922 + 9398198; // the engine plus the body model, for the progress figure
+  const HEAD = -1;                        // the head handle moves the face points together
+  const BODY_PTS = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 31, 32];
+  const DRAG_PTS = [HEAD, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 31, 32];
+  // MediaPipe gives the athlete's left side odd numbers and the right side even ones.
+  const BONES = [[11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [11, 12], [23, 24], [23, 25], [25, 27], [27, 31], [24, 26], [26, 28], [28, 32]];
+  const INK = { L: '#ffb21e', R: '#35d0ff', C: '#ffffff', mine: '#ff6bd6' };
+  const sideOf = (a, b) => (a % 2 && b % 2) ? 'L' : (!(a % 2) && !(b % 2)) ? 'R' : 'C';
+  const SPORTS = {
+    ski: {
+      name: 'Ski',
+      arcs: [[23, 25, 27], [24, 26, 28], [11, 23, 25], [12, 24, 26]],
+      read: [['Knees', 'kneeL', 'kneeR'], ['Hips', 'hipL', 'hipR'], ['Shins', 'shinL', 'shinR'], ['Angulation', 'angulation'], ['Body lean', 'lean']]
+    },
+    cricket: {
+      name: 'Cricket',
+      arcs: [[23, 25, 27], [24, 26, 28], [11, 13, 15], [12, 14, 16]],
+      trunk: true,
+      read: [['Knees', 'kneeL', 'kneeR'], ['Elbows', 'elbowL', 'elbowR'], ['Upper body lean', 'upper']]
+    }
+  };
+
+  const Pose = {
+    state: 'off', err: '', got: 0, lm: null, work: null, wctx: null, ready: null, lastMs: 0, lastEnd: 0,
+    load(onProgress) {
+      if (this.ready) return this.ready;
+      this.state = 'loading'; this.got = 0; this.err = '';
+      const abs = (u) => new URL(u, location.href).href;
+      const counts = [0, 0];
+      // Read a file in chunks so the screen can show how much has arrived. The engine file is only read to
+      // warm the cache; the library fetches it again itself and gets the saved copy.
+      const pull = async (url, k, keep) => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.body || !res.body.getReader) {
+          const whole = new Uint8Array(await res.arrayBuffer());
+          counts[k] = whole.length; this.got = counts[0] + counts[1]; onProgress();
+          return keep ? whole : null;
+        }
+        const reader = res.body.getReader(), parts = [];
+        for (;;) {
+          const r = await reader.read();
+          if (r.done) break;
+          if (keep) parts.push(r.value);
+          counts[k] += r.value.length;
+          this.got = counts[0] + counts[1];
+          onProgress();
+        }
+        if (!keep) return null;
+        const out = new Uint8Array(counts[k]);
+        let o = 0;
+        for (const part of parts) { out.set(part, o); o += part.length; }
+        return out;
+      };
+      const wasmUrl = abs(POSE_SRC.wasm + 'vision_wasm_internal.wasm');
+      this.ready = (async () => {
+        const [mod, model] = await Promise.all([import(abs(POSE_SRC.bundle)), pull(abs(POSE_SRC.model), 0, true), pull(wasmUrl, 1, false)]);
+        const fileset = { wasmLoaderPath: abs(POSE_SRC.wasm + 'vision_wasm_internal.js'), wasmBinaryPath: wasmUrl };
+        const make = (delegate, buf) => mod.PoseLandmarker.createFromOptions(fileset, {
+          baseOptions: { modelAssetBuffer: buf, delegate }, runningMode: 'IMAGE', numPoses: 2,
+          minPoseDetectionConfidence: 0.3, minPosePresenceConfidence: 0.3, minTrackingConfidence: 0.3
+        });
+        let lm;
+        try { lm = await make('GPU', model.slice()); } catch (e) { lm = await make('CPU', model); }
+        this.lm = lm;
+        this.work = document.createElement('canvas');
+        this.wctx = this.work.getContext('2d');
+        this.state = 'ready';
+      })().catch((e) => { this.state = 'failed'; this.err = (e && e.message) || String(e); this.ready = null; throw e; });
+      return this.ready;
+    },
+    // Look for people in one region of the frame on screen. Points come back in video pixels.
+    detect(video, r, maxSide) {
+      const k = Math.min(2, maxSide / Math.max(r.w, r.h));
+      const cw = Math.max(32, Math.round(r.w * k)), ch = Math.max(32, Math.round(r.h * k));
+      const c = this.work;
+      if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+      this.wctx.drawImage(video, r.x, r.y, r.w, r.h, 0, 0, cw, ch);
+      const t0 = performance.now();
+      let res = null;
+      try { res = this.lm.detect(c); } catch (e) { res = null; }
+      this.lastEnd = performance.now();
+      this.lastMs = this.lastEnd - t0;
+      const found = res && res.landmarks ? res.landmarks : [];
+      return found.map(pts => pts.map(q => ({ x: r.x + q.x * r.w, y: r.y + q.y * r.h, v: q.visibility == null ? 1 : q.visibility })));
+    }
+  };
+
+  /* body geometry, in video pixels */
+  const DEG = 180 / Math.PI;
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, v: Math.min(a.v, b.v) });
+  const headOf = (P) => mid(P[7], P[8]);
+  function bodyBox(P) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const k of BODY_PTS) { const q = P[k]; if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x; if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y; }
+    return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, size: Math.max(x1 - x0, y1 - y0, 1) };
+  }
+  // The tracker finds people more reliably with plenty of space around them: on Briar's GS clip a square
+  // 3.5 times the body found her again on 87% of frames, against 62% for a tight 1.9 (13 November 2026).
+  const FOLLOW = [3.5, 4.5];
+  function followFrom(video, prior, W, H) {
+    const b = bodyBox(prior.pts);
+    for (const f of FOLLOW) {
+      const c = nearestPose(Pose.detect(video, cropAround(b, W, H, f), 768), b.cx, b.cy, b.size * 1.1);
+      if (c) return c;
+    }
+    return null;
+  }
+  function cropAround(b, W, H, f) {
+    const s = Math.max(b.size * f, 96);
+    const w = Math.min(s, W), h = Math.min(s, H);
+    return { x: clamp(b.cx - w / 2, 0, W - w), y: clamp(b.cy - h / 2, 0, H - h), w, h };
+  }
+  // Overlapping squares across the frame, for finding someone too small to spot in the whole picture.
+  function tilesFor(W, H, f) {
+    const s = Math.round(Math.min(W, H) * f), out = [];
+    const nx = Math.max(1, Math.ceil((W - s) / (s * 0.6)) + 1), ny = Math.max(1, Math.ceil((H - s) / (s * 0.6)) + 1);
+    for (let yi = 0; yi < ny; yi++) {
+      for (let xi = 0; xi < nx; xi++) {
+        out.push({ x: nx === 1 ? (W - s) / 2 : (W - s) * xi / (nx - 1), y: ny === 1 ? (H - s) / 2 : (H - s) * yi / (ny - 1), w: s, h: s });
+      }
+    }
+    return out;
+  }
+  function nearestPose(cands, x, y, maxD) {
+    let best = null, bd = Infinity;
+    for (const c of cands) { const b = bodyBox(c); const d = Math.hypot(b.cx - x, b.cy - y); if (d < bd) { bd = d; best = c; } }
+    return best && bd <= maxD ? best : null;
+  }
+  function biggestPose(cands) {
+    let best = null, bs = -1;
+    for (const c of cands) {
+      let vis = 0;
+      for (const k of BODY_PTS) vis += c[k].v;
+      const s = bodyBox(c).h * (0.5 + vis / BODY_PTS.length);
+      if (s > bs) { bs = s; best = c; }
+    }
+    return best;
+  }
+  function angleAt(a, b, c) {
+    const ux = a.x - b.x, uy = a.y - b.y, vx = c.x - b.x, vy = c.y - b.y;
+    const d = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+    return d ? Math.acos(clamp((ux * vx + uy * vy) / d, -1, 1)) * DEG : null;
+  }
+  // How far a line leans away from upright: 0 is straight up.
+  function fromUpright(lo, hi) { const dx = hi.x - lo.x, dy = hi.y - lo.y; return (dx || dy) ? Math.atan2(Math.abs(dx), -dy) * DEG : null; }
+  function measures(P) {
+    const sh = mid(P[11], P[12]), hip = mid(P[23], P[24]), ank = mid(P[27], P[28]);
+    const straight = angleAt(ank, hip, sh);
+    return {
+      kneeL: angleAt(P[23], P[25], P[27]), kneeR: angleAt(P[24], P[26], P[28]),
+      hipL: angleAt(P[11], P[23], P[25]), hipR: angleAt(P[12], P[24], P[26]),
+      elbowL: angleAt(P[11], P[13], P[15]), elbowR: angleAt(P[12], P[14], P[16]),
+      shinL: fromUpright(P[27], P[25]), shinR: fromUpright(P[28], P[26]),
+      upper: fromUpright(hip, sh), lean: fromUpright(ank, sh),
+      angulation: straight == null ? null : 180 - straight
+    };
+  }
+
+  /* drawing on the picture, in screen pixels */
+  function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
+  function strokeLine(ctx, a, b, color, width, dash) {
+    ctx.lineCap = 'round';
+    ctx.setLineDash(dash || []);
+    ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = width + 3;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  function dotAt(ctx, a, color, r, ring) {
+    ctx.beginPath(); ctx.arc(a.x, a.y, r + 1.5, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    if (ring) { ctx.beginPath(); ctx.arc(a.x, a.y, r + 4, 0, Math.PI * 2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke(); }
+  }
+  function labelAt(ctx, text, x, y, color) {
+    ctx.font = '600 14px "Barlow Condensed", "Arial Narrow", sans-serif';
+    const w = ctx.measureText(text).width + 10, h = 19, r = 6;
+    const x0 = x - w / 2, y0 = y - h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x0 + r, y0); ctx.arcTo(x0 + w, y0, x0 + w, y0 + h, r); ctx.arcTo(x0 + w, y0 + h, x0, y0 + h, r);
+    ctx.arcTo(x0, y0 + h, x0, y0, r); ctx.arcTo(x0, y0, x0 + w, y0, r); ctx.closePath();
+    ctx.fillStyle = 'rgba(5,9,12,.8)'; ctx.fill();
+    ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y + 0.5);
+  }
+  // The angle at corner b between a and c, shaded, with its value placed just outside the angle.
+  function arcAngle(ctx, a, b, c, color, rad, text) {
+    const a1 = Math.atan2(a.y - b.y, a.x - b.x), a2 = Math.atan2(c.y - b.y, c.x - b.x);
+    let d = a2 - a1;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, rad, a1, a1 + d, d < 0); ctx.closePath();
+    ctx.fillStyle = hexA(color, 0.3); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x, b.y, rad, a1, a1 + d, d < 0); ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.stroke();
+    if (text) {
+      const mx = Math.cos(a1 + d / 2), my = Math.sin(a1 + d / 2);
+      labelAt(ctx, text, b.x - mx * (rad + 18), b.y - my * (rad + 13), color);
+    }
+  }
+  function drawBody(ctx, m, pose, ghost, sport) {
+    const P = pose.pts, S = (k) => m.to(P[k].x, P[k].y);
+    const head = headOf(P), sh = mid(P[11], P[12]), hip = mid(P[23], P[24]);
+    const sHead = m.to(head.x, head.y), sSh = m.to(sh.x, sh.y), sHip = m.to(hip.x, hip.y);
+    const base = ghost ? 0.35 : 1;
+    const big = bodyBox(P).h * m.k > 110; // values on the picture only when the figure is big enough to read them
+    ctx.save();
+    if (!ghost) {
+      // a plumb line from the head: is the head over the hips and feet?
+      const feet = Math.max(P[27].y, P[28].y, P[31].y, P[32].y);
+      const end = m.to(head.x, feet + Math.max(0, feet - head.y) * 0.06);
+      ctx.globalAlpha = 0.9;
+      strokeLine(ctx, sHead, { x: sHead.x, y: end.y }, INK.C, 1.5, [6, 5]);
+    }
+    for (const [a, b] of BONES) {
+      ctx.globalAlpha = base * (Math.min(P[a].v, P[b].v) < 0.45 ? 0.55 : 1);
+      strokeLine(ctx, S(a), S(b), INK[sideOf(a, b)], 3);
+    }
+    ctx.globalAlpha = base;
+    strokeLine(ctx, sSh, sHead, INK.C, 3);
+    dotAt(ctx, sHead, INK.C, 5.5, !ghost && !!pose.moved && pose.moved.has(HEAD));
+    for (const k of DRAG_PTS) {
+      if (k === HEAD) continue;
+      ctx.globalAlpha = base * (P[k].v < 0.45 ? 0.6 : 1);
+      dotAt(ctx, S(k), INK[k % 2 ? 'L' : 'R'], 4, !ghost && !!pose.moved && pose.moved.has(k));
+    }
+    ctx.globalAlpha = 1;
+    if (!ghost) {
+      for (const [a, b, c] of sport.arcs) {
+        const val = angleAt(P[a], P[b], P[c]);
+        if (val != null) arcAngle(ctx, S(a), S(b), S(c), INK[b % 2 ? 'L' : 'R'], 15, big ? Math.round(val) + '°' : '');
+      }
+      if (sport.trunk) {
+        const len = Math.hypot(sSh.x - sHip.x, sSh.y - sHip.y);
+        const up = { x: sHip.x, y: sHip.y - len };
+        strokeLine(ctx, sHip, up, INK.C, 1.2, [4, 4]);
+        const v = fromUpright(hip, sh);
+        if (v != null) arcAngle(ctx, up, sHip, sSh, INK.C, 24, big ? Math.round(v) + '°' : '');
+      }
+    }
+    ctx.restore();
+  }
+  function drawMine(ctx, m, angles, draft) {
+    const col = INK.mine;
+    for (const a of angles) {
+      const s = a.map(q => m.to(q.x, q.y));
+      strokeLine(ctx, s[0], s[1], col, 2.5);
+      strokeLine(ctx, s[1], s[2], col, 2.5);
+      const v = angleAt(a[0], a[1], a[2]);
+      if (v != null) arcAngle(ctx, s[0], s[1], s[2], col, 22, Math.round(v) + '°');
+      s.forEach(q => dotAt(ctx, q, col, 5));
+    }
+    if (draft.length) {
+      const s = draft.map(q => m.to(q.x, q.y));
+      if (s.length > 1) strokeLine(ctx, s[0], s[1], col, 2.5, [6, 5]);
+      s.forEach(q => dotAt(ctx, q, col, 5));
+    }
+  }
+
   /* ---------- one video pane ---------- */
   class Player {
     constructor(app, idx, pane) {
@@ -557,6 +856,9 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       this.video = pane.querySelector('video');
       this.viewport = pane.querySelector('.viewport');
       this.zoomer = pane.querySelector('.zoomer');
+      this.overlay = pane.querySelector('.overlay');
+      this.octx = this.overlay.getContext('2d');
+      this.note = pane.querySelector('.pose-note');
       this.waiters = [];
       this.frameWaiters = [];
       this.url = null;
@@ -577,9 +879,13 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       this.flushFrameWaiters(null);
       this.times = null; this.fd = 1 / 30; this.lastDur = 1 / 30; this.offset = 0; this.n = 0;
       this.cur = 0; this.target = 0;
-      this.seeking = false; this.pending = null; this.seekStarted = 0;
+      this.seeking = false; this.pending = null; this.seekStarted = 0; this.busy = false;
       this.lastPresented = null; this.fpsSamples = [];
       this.markA = null; this.markB = null;
+      // body tracking: one result per frame, frames searched with no one found, and the angles drawn by hand
+      clearTimeout(this.poseTimer);
+      this.poses = new Map(); this.poseNone = new Map(); this.angles = []; this.draft = []; this.hasEdits = false;
+      this.poseTimerFor = null; this.poseRunning = null; this.poseStarted = 0; this.poseForce = null; this.liveSearchAt = 0;
     }
     get fps() { return 1 / this.fd; }
     // waiters: someone waiting for a seek to land. frameWaiters: someone who needs the browser's own timestamp for the frame on screen.
@@ -645,6 +951,9 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         this.times = null; this.fd = 1 / 30;
         this.n = Math.max(1, Math.round((isFinite(v.duration) ? v.duration : 0) / this.fd));
       }
+      // While the clock is being lined up, a step would land a frame the calibration mistakes for the first
+      // one and leave the counter a frame out for the whole clip, so steps wait until this is done.
+      this.busy = true;
       this.state = 'ready';
       // Line our clock up with the browser's: ask for the first frame and read the timestamp it shows.
       const mt = await this.seekAndRead(0);
@@ -655,6 +964,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       if (opts.markB != null) this.markB = clamp(opts.markB, 0, this.n - 1);
       await this.seekToIndex(clamp(opts.frame || 0, 0, this.n - 1), true);
       if (token !== this.loadToken) return false;
+      this.busy = false;
       this.app.onPlayerState(this);
       return true;
     }
@@ -762,7 +1072,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         this.flushWaiters(mt);
         if (!fromClock) this.flushFrameWaiters(mt);
       }
-      this.app.onFrame(this, mt);
+      this.app.onFrame(this, mt, fromClock);
     }
 
     /* zoom and pan */
@@ -789,20 +1099,59 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
     }
     resetZoom() { this.setZoom(1, 0, 0); }
     refit() { if (this.zoom.s > 1) this.setZoom(this.zoom.s, this.zoom.x, this.zoom.y); }
+
+    /* between video pixels and points on the screen, allowing for letterboxing, zoom and flip */
+    mapper() {
+      const c = this.contentRect(), vw = this.video.videoWidth || 16, k = c.cw / vw, z = this.zoom, fl = this.flipped;
+      return {
+        k: k * z.s, w: c.w, h: c.h,
+        to: (x, y) => { let u = x * k; if (fl) u = c.cw - u; return { x: z.s * (c.cx + u) + z.x, y: z.s * (c.cy + y * k) + z.y }; },
+        from: (sx, sy) => { const x0 = (sx - z.x) / z.s, y0 = (sy - z.y) / z.s; let u = x0 - c.cx; if (fl) u = c.cw - u; return { x: u / k, y: (y0 - c.cy) / k }; }
+      };
+    }
+    // The part of the video on screen while zoomed in, in video pixels.
+    viewRegion() {
+      const m = this.mapper(), W = this.video.videoWidth, H = this.video.videoHeight;
+      const a = m.from(0, 0), b = m.from(m.w, m.h);
+      const x0 = clamp(Math.min(a.x, b.x), 0, W), x1 = clamp(Math.max(a.x, b.x), 0, W);
+      const y0 = clamp(Math.min(a.y, b.y), 0, H), y1 = clamp(Math.max(a.y, b.y), 0, H);
+      return (x1 - x0 > 16 && y1 - y0 > 16) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+    }
+    // The closest frame with a body found, within span frames (a fixed one wins a tie).
+    priorFor(i, span) {
+      let best = null, bd = Infinity;
+      for (const [f, pose] of this.poses) {
+        const gap = Math.abs(f - i);
+        if (f === i || gap > span) continue;
+        const d = gap - (pose.edited ? 0.5 : 0);
+        if (d < bd) { bd = d; best = pose; }
+      }
+      return best;
+    }
+    nearby(i, span) {
+      for (let k = 1; k <= span; k++) { const a = this.poses.get(i - k) || this.poses.get(i + k); if (a) return a; }
+      return null;
+    }
+
     bindGestures() {
       const vp = this.viewport;
       const pts = new Map();
-      let g = null, tap = null;
+      let g = null, tap = null, viewMoved = false, wheelTimer = 0;
       const local = (e) => { const r = vp.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
       vp.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         try { vp.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
-        pts.set(e.pointerId, local(e));
+        const lp = local(e);
+        pts.set(e.pointerId, lp);
         if (pts.size === 1) {
-          tap = { x: e.clientX, y: e.clientY, t: performance.now() };
-          g = { type: 'pan', x0: this.zoom.x, y0: this.zoom.y, p0: local(e) };
+          tap = { x: e.clientX, y: e.clientY, t: performance.now(), p: lp };
+          // a finger on a body dot or an angle point moves that point
+          const h = this.state === 'ready' ? this.app.handleAt(this, lp) : null;
+          if (h) { tap = null; g = { type: 'drag', h, id: e.pointerId }; this.app.startDrag(this, h); return; }
+          g = { type: 'pan', x0: this.zoom.x, y0: this.zoom.y, p0: lp };
         } else if (pts.size === 2) {
           tap = null;
+          if (g && g.type === 'drag') this.app.endDrag(this, g.h);
           const [a, b] = Array.from(pts.values());
           g = { type: 'pinch', s0: this.zoom.s, x0: this.zoom.x, y0: this.zoom.y, d0: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), m0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
         }
@@ -813,6 +1162,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         pts.set(e.pointerId, p);
         if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 10) tap = null;
         if (!g || this.state !== 'ready') return;
+        if (g.type === 'drag') { if (e.pointerId === g.id) this.app.dragHandle(this, g.h, p); return; }
         if (g.type === 'pinch' && pts.size >= 2) {
           const [a, b] = Array.from(pts.values());
           const d = Math.max(10, Math.hypot(a.x - b.x, a.y - b.y));
@@ -820,19 +1170,23 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
           const s = clamp(g.s0 * d / g.d0, 1, 10);
           const qx = (g.m0.x - g.x0) / g.s0, qy = (g.m0.y - g.y0) / g.s0;
           this.setZoom(s, m.x - s * qx, m.y - s * qy);
+          viewMoved = true;
         } else if (g.type === 'pan' && this.zoom.s > 1) {
           this.setZoom(this.zoom.s, g.x0 + (p.x - g.p0.x), g.y0 + (p.y - g.p0.y));
+          viewMoved = true;
         }
       });
       const end = (e) => {
         if (!pts.has(e.pointerId)) return;
         pts.delete(e.pointerId);
+        if (g && g.type === 'drag' && e.pointerId === g.id) { this.app.endDrag(this, g.h); g = null; tap = null; return; }
         if (pts.size === 1) {
           const a = Array.from(pts.values())[0];
           g = { type: 'pan', x0: this.zoom.x, y0: this.zoom.y, p0: a };
         } else if (pts.size === 0) {
-          if (tap && e.type === 'pointerup' && performance.now() - tap.t < 400) this.app.onPaneTap(this);
+          if (tap && e.type === 'pointerup' && performance.now() - tap.t < 400) this.app.onPaneTap(this, tap.p);
           tap = null; g = null;
+          if (viewMoved) { viewMoved = false; this.app.onViewChanged(this); }
         }
       };
       vp.addEventListener('pointerup', end);
@@ -844,6 +1198,8 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         const s = clamp(this.zoom.s * Math.exp(-e.deltaY * 0.0016), 1, 10);
         const qx = (p.x - this.zoom.x) / this.zoom.s, qy = (p.y - this.zoom.y) / this.zoom.s;
         this.setZoom(s, p.x - s * qx, p.y - s * qy);
+        clearTimeout(wheelTimer);
+        wheelTimer = setTimeout(() => this.app.onViewChanged(this), 350);
       }, { passive: false });
     }
   }
@@ -972,6 +1328,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
   const App = {
     players: [], active: 0, mode: 'single', linked: false, linkDelta: 0, loop: false,
     speed: 1, soundOn: false, queued: false, openTarget: null, tlDragging: false, toastTimer: 0, tipDismissed: false,
+    bodyOn: false, sport: 'ski', angleArmed: false, bodyReadHtml: null,
 
     init() {
       const el = this.el = {
@@ -986,12 +1343,15 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         markA: $('#markA'), markB: $('#markB'), loop: $('#loopBtn'), clear: $('#clearBtn'),
         linkRow: $('#linkRow'), link: $('#linkBtn'), linkHint: $('#linkHint'),
         tip: $('#fpsTip'), tipOk: $('#tipOk'),
+        bodyBtn: $('#bodyBtn'), sportBtn: $('#sportBtn'), angleBtn: $('#angleBtn'), bodyClear: $('#bodyClear'), bodyRead: $('#bodyRead'),
         help: $('#help'), helpClose: $('#helpClose'), toast: $('#toast')
       };
       this.players = el.panes.map((pane, i) => new Player(this, i, pane));
       this.jog = new Jog(this, el.jog);
       const saved = store.get('speed', 1);
       this.speed = SPEEDS.indexOf(saved) >= 0 ? saved : 1;
+      const sport = store.get('sport', 'ski');
+      this.sport = SPORTS[sport] ? sport : 'ski';
       this.tipDismissed = !!store.get('tip30', false);
       if (store.get('jogHintSeen', false)) el.jogHint.hidden = true;
       this.bind();
@@ -1020,6 +1380,10 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       el.loop.addEventListener('click', () => this.toggleLoop());
       el.clear.addEventListener('click', () => this.clearMarks());
       el.link.addEventListener('click', () => this.toggleLink());
+      el.bodyBtn.addEventListener('click', () => this.toggleBody());
+      el.sportBtn.addEventListener('click', () => this.cycleSport());
+      el.angleBtn.addEventListener('click', () => this.toggleAngleTool());
+      el.bodyClear.addEventListener('click', () => this.clearBody());
       el.tipOk.addEventListener('click', () => { this.tipDismissed = true; store.set('tip30', true); this.render(); });
       el.timeline.addEventListener('input', () => { this.tlDragging = true; this.seekAll(+el.timeline.value); });
       const tlDone = () => { this.tlDragging = false; this.scheduleRender(); };
@@ -1046,7 +1410,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       document.addEventListener('keydown', (e) => this.onKey(e));
       document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('.tbtn,.viewport,#jog')) e.preventDefault(); });
       if (window.ResizeObserver) {
-        const ro = new ResizeObserver(() => { this.arrange(); this.players.forEach(p => p.refit()); this.jog.resize(); });
+        const ro = new ResizeObserver(() => { this.arrange(); this.players.forEach(p => p.refit()); this.jog.resize(); this.scheduleRender(); });
         ro.observe(el.stage);
         ro.observe(el.jog);
         el.panes.forEach(pn => ro.observe(pn));
@@ -1131,7 +1495,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
     /* playing and stepping */
     togglePlay() {
       const d = this.driver();
-      if (!d || d.state !== 'ready') return;
+      if (!d || d.state !== 'ready' || d.busy) return;
       if (d.video.paused) this.play(); else this.pause();
     },
     play() {
@@ -1169,13 +1533,13 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
     pauseIfPlaying() { const d = this.driver(); if (d && !d.video.paused) this.pause(); },
     step(k) {
       const d = this.driver();
-      if (!d || d.state !== 'ready') return Promise.resolve();
+      if (!d || d.state !== 'ready' || d.busy) return Promise.resolve();
       if (!d.video.paused) this.pause();
       return this.seekAll(clamp(d.target + k, 0, d.n - 1));
     },
     seekAll(i) {
       const ps = this.targets(), d = ps[0];
-      if (!d || d.state !== 'ready') return Promise.resolve();
+      if (!d || d.state !== 'ready' || ps.some(p => p.busy)) return Promise.resolve();
       ps.forEach(p => { if (!p.video.paused) p.video.pause(); });
       i = clamp(i, 0, d.n - 1);
       const jobs = [d.seekToIndex(i)];
@@ -1297,7 +1661,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
     /* events from players */
     onPlayerState() { this.arrange(); this.scheduleRender(); },
     onPlayState() { this.scheduleRender(); },
-    onFrame(p, mt) {
+    onFrame(p, mt, fromClock) {
       const d = this.driver();
       if (p === d && !p.video.paused) {
         if (this.loop) {
@@ -1306,6 +1670,7 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         }
         if (this.linked) this.syncFollower(mt);
       }
+      if (!p.video.paused) this.livePose(p, !!fromClock);
       this.scheduleRender();
     },
     onEnded(p) {
@@ -1315,10 +1680,272 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       }
       this.scheduleRender();
     },
-    onPaneTap(p) {
+    onPaneTap(p, pt) {
       if (p.state !== 'ready') return;
+      if (this.angleArmed && pt) {
+        // placing a hand-drawn angle: one end, the corner, the other end
+        if (this.mode === 'compare' && p.idx !== this.active) this.setActive(p.idx);
+        this.pauseIfPlaying();
+        this.players.forEach(o => { if (o !== p) o.draft = []; });
+        p.draft.push(p.mapper().from(pt.x, pt.y));
+        if (p.draft.length === 3) { p.angles.push(p.draft); p.draft = []; this.angleArmed = false; }
+        this.scheduleRender();
+        return;
+      }
       if (this.mode === 'compare' && p.idx !== this.active) { this.setActive(p.idx); return; }
       this.togglePlay();
+    },
+
+    /* body tracking */
+    toggleBody() {
+      if (this.bodyOn) { this.bodyOn = false; this.scheduleRender(); return; }
+      this.bodyOn = true;
+      if (Pose.state !== 'ready') {
+        Pose.load(() => this.scheduleRender()).then(() => this.scheduleRender(), () => this.scheduleRender());
+      }
+      this.scheduleRender();
+    },
+    cycleSport() {
+      this.sport = this.sport === 'ski' ? 'cricket' : 'ski';
+      store.set('sport', this.sport);
+      this.toast(SPORTS[this.sport].name + ' angles');
+      this.scheduleRender();
+    },
+    toggleAngleTool() {
+      const d = this.driver();
+      if (!d || d.state !== 'ready') return;
+      this.angleArmed = !this.angleArmed;
+      this.players.forEach(p => { p.draft = []; });
+      if (this.angleArmed) this.pauseIfPlaying();
+      this.scheduleRender();
+    },
+    clearBody() {
+      const d = this.driver();
+      if (!d) return;
+      d.angles = []; d.draft = [];
+      for (const [f, pose] of d.poses) if (pose.edited) d.poses.delete(f);
+      d.hasEdits = false;
+      this.angleArmed = false;
+      this.toast('Cleared your angles and dot fixes.');
+      this.scheduleRender();
+    },
+    poseFailText() {
+      if (navigator.onLine === false) return 'Body tracking needs a signal the first time it is used (23 MB). Tap Body again once you have signal.';
+      if (!POSE_SRC.local) return "Body tracking can't load inside this page. It works at briarmurray.com/replay.";
+      return "Body tracking didn't load. Check the signal, then tap Body twice to try again.";
+    },
+    // Which search a frame last had, so a frame with no one found is only searched again when something changes.
+    poseKey(p, i) {
+      const z = p.zoom;
+      return (p.priorFor(i, 4) ? 'p' : '-') + (z.s > 1.05 ? 'z' + Math.round(z.s * 20) + ':' + Math.round(z.x) + ':' + Math.round(z.y) : 'f');
+    },
+    needsPose(p) {
+      const v = p.video;
+      if (p.state !== 'ready' || !v.paused || p.seeking || p.pending != null || p.cur !== p.target || v.readyState < 2) return false;
+      const have = p.poses.get(p.cur);
+      if ((have && !have.rough) || p.poseRunning === p.cur) return false;
+      return p.poseNone.get(p.cur) !== this.poseKey(p, p.cur);
+    },
+    // Called on every screen update: once a paused frame has settled, look for the athlete on it.
+    // The short wait means holding a step button stays smooth, and the figure appears when you stop.
+    poseTick() {
+      if (!this.bodyOn || Pose.state !== 'ready') return;
+      this.players.forEach(p => {
+        if (!this.needsPose(p) || p.poseTimerFor === p.cur) return;
+        clearTimeout(p.poseTimer);
+        const i = p.cur;
+        p.poseTimerFor = i;
+        p.poseTimer = setTimeout(() => this.runPose(p, i), 90);
+      });
+    },
+    async runPose(p, i) {
+      p.poseTimerFor = null;
+      if (!this.bodyOn || Pose.state !== 'ready' || p.cur !== i || !this.needsPose(p)) { this.scheduleRender(); return; }
+      const force = p.poseForce && p.poseForce.i === i ? p.poseForce : null;
+      p.poseRunning = i;
+      p.poseStarted = performance.now();
+      let res = null;
+      try { res = await this.analyse(p, i, !!force); } catch (e) { res = null; }
+      p.poseRunning = null;
+      if (res === 'stale') { this.scheduleRender(); return; }
+      if (force) p.poseForce = null;
+      if (res) {
+        if (force && force.old) {
+          const a = bodyBox(force.old.pts), b = bodyBox(res.pts);
+          if (Math.hypot(a.cx - b.cx, a.cy - b.cy) > Math.max(a.size, b.size) * 0.6) {
+            // zoomed onto someone else: drop the automatic results that followed the first person
+            for (const [f, pose] of p.poses) if (!pose.edited) p.poses.delete(f);
+            p.poseNone.clear();
+          }
+        }
+        p.poses.set(i, { pts: res.pts, edited: false, how: res.how });
+      } else {
+        const rough = p.poses.get(i);
+        if (rough && rough.rough) p.poses.delete(i);
+        p.poseNone.set(i, this.poseKey(p, i));
+      }
+      this.scheduleRender();
+    },
+    // Find the athlete on frame i: follow them from a nearby frame if possible, otherwise search the part of
+    // the picture on screen, then the whole frame, then the frame square by square for someone small.
+    async analyse(p, i, force) {
+      const v = p.video, W = v.videoWidth, H = v.videoHeight;
+      if (!W || !H) return null;
+      const still = () => p.state === 'ready' && v.paused && !p.seeking && p.pending == null && p.cur === i && v.readyState >= 2;
+      const breathe = async () => { this.scheduleRender(); await new Promise(r => setTimeout(r, 0)); return still(); };
+      const near = force ? null : p.priorFor(i, 4);
+      const weak = near || (force ? null : p.priorFor(i, Infinity));
+      const view = p.zoom.s > 1.05 ? p.viewRegion() : null;
+      if (near) {
+        const c = followFrom(v, near, W, H);
+        if (c) return { pts: c, how: 'follow' };
+      }
+      if (!await breathe()) return 'stale';
+      let cands, target = null;
+      if (view) {
+        cands = Pose.detect(v, view, 768);
+        const wb = weak ? bodyBox(weak.pts) : null;
+        const inView = wb && wb.cx >= view.x && wb.cx <= view.x + view.w && wb.cy >= view.y && wb.cy <= view.y + view.h;
+        target = inView ? { x: wb.cx, y: wb.cy } : { x: view.x + view.w / 2, y: view.y + view.h / 2 };
+      } else {
+        cands = Pose.detect(v, { x: 0, y: 0, w: W, h: H }, 1280);
+        for (const f of [0.8, 0.5]) {
+          if (cands.length) break;
+          for (const r of tilesFor(W, H, f)) {
+            if (!await breathe()) return 'stale';
+            cands.push(...Pose.detect(v, r, 512));
+          }
+        }
+        if (weak) { const wb = bodyBox(weak.pts); target = { x: wb.cx, y: wb.cy }; }
+      }
+      if (!cands.length) return null;
+      const pick = target ? nearestPose(cands, target.x, target.y, Infinity) : biggestPose(cands);
+      if (!await breathe()) return 'stale';
+      // a second, closer look around the person gives steadier points when they are small in the frame
+      const b = bodyBox(pick);
+      const close = nearestPose(Pose.detect(v, cropAround(b, W, H, FOLLOW[0]), 768), b.cx, b.cy, b.size * 0.8);
+      return { pts: close || pick, how: view ? 'view' : 'search' };
+    },
+    // While playing: follow the athlete from the frame before, using at most half the time between frames.
+    // Without frame callbacks (some browsers, a page out of sight) the frame number comes from the clock and
+    // may be one out, so that result is marked rough and redone properly once the clip is paused there.
+    livePose(p, rough) {
+      if (!this.bodyOn || Pose.state !== 'ready' || p.state !== 'ready') return;
+      const i = p.cur, v = p.video, W = v.videoWidth, H = v.videoHeight;
+      if (p.poses.has(i) || !W || !H || v.readyState < 2) return;
+      const now = performance.now();
+      if (now - Pose.lastEnd < Math.max(16, Pose.lastMs)) return;
+      const near = p.priorFor(i, 4);
+      let pts = null;
+      if (near) {
+        const b = bodyBox(near.pts);
+        pts = nearestPose(Pose.detect(v, cropAround(b, W, H, FOLLOW[0]), 768), b.cx, b.cy, b.size * 1.1);
+      } else if (now - p.liveSearchAt > 500 && p.zoom.s <= 1.05) {
+        p.liveSearchAt = now;
+        const cands = Pose.detect(v, { x: 0, y: 0, w: W, h: H }, 960);
+        const weak = p.priorFor(i, Infinity);
+        const wb = weak ? bodyBox(weak.pts) : null;
+        pts = cands.length ? (wb ? nearestPose(cands, wb.cx, wb.cy, Infinity) : biggestPose(cands)) : null;
+      }
+      if (pts) p.poses.set(i, { pts, edited: false, how: 'live', rough });
+    },
+    // After a pinch or drag of the picture: look again inside the new view, which is how you pick the athlete.
+    onViewChanged(p) {
+      if (!this.bodyOn || Pose.state !== 'ready' || p.state !== 'ready' || p.zoom.s <= 1.05) return;
+      const i = p.shown(), old = p.poses.get(i);
+      if (old && old.edited) return;
+      p.poseForce = { i, old: old || null };
+      p.poses.delete(i);
+      p.poseNone.delete(i);
+      p.poseTimerFor = null;
+      this.scheduleRender();
+    },
+    // What is under a finger: a hand-drawn angle point first, then a body dot on the paused frame.
+    handleAt(p, pt) {
+      if (p.state !== 'ready' || this.angleArmed) return null; // while placing an angle, every tap places a point
+      const m = p.mapper();
+      let best = null, bd = 24;
+      const test = (q, h) => { const s = m.to(q.x, q.y), d = Math.hypot(s.x - pt.x, s.y - pt.y); if (d < bd) { bd = d; best = h; } };
+      p.angles.forEach((a, ai) => a.forEach((q, qi) => test(q, { kind: 'angle', ai, qi })));
+      p.draft.forEach((q, qi) => test(q, { kind: 'draft', qi }));
+      if (best || !this.bodyOn || !p.video.paused) return best;
+      const i = p.shown(), pose = p.poses.get(i);
+      if (!pose) return null;
+      for (const k of DRAG_PTS) test(k === HEAD ? headOf(pose.pts) : pose.pts[k], { kind: 'joint', frame: i, k });
+      return best;
+    },
+    startDrag(p) {
+      this.pauseIfPlaying();
+      if (this.mode === 'compare' && p.idx !== this.active) this.setActive(p.idx);
+    },
+    dragHandle(p, h, pt) {
+      const q = p.mapper().from(pt.x, pt.y);
+      if (h.kind === 'angle') p.angles[h.ai][h.qi] = q;
+      else if (h.kind === 'draft') p.draft[h.qi] = q;
+      else if (h.kind === 'joint') {
+        const pose = p.poses.get(h.frame);
+        if (!pose) return;
+        if (h.k === HEAD) {
+          const c = headOf(pose.pts), dx = q.x - c.x, dy = q.y - c.y;
+          for (let k = 0; k <= 10; k++) { const o = pose.pts[k]; pose.pts[k] = { x: o.x + dx, y: o.y + dy, v: o.v }; }
+        } else {
+          pose.pts[h.k] = { x: q.x, y: q.y, v: 1 };
+        }
+        pose.edited = true;
+        (pose.moved = pose.moved || new Set()).add(h.k);
+        p.hasEdits = true;
+      }
+      this.scheduleRender();
+    },
+    endDrag() { this.scheduleRender(); },
+    drawOverlay(p) {
+      const cv = p.overlay, ctx = p.octx;
+      const r = p.viewport.getBoundingClientRect(), dpr = Math.min(3, window.devicePixelRatio || 1);
+      const W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      if (p.state !== 'ready' || !r.width || !p.video.videoWidth) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const m = p.mapper();
+      if (this.bodyOn && Pose.state === 'ready') {
+        const i = p.shown();
+        let pose = p.poses.get(i), ghost = false;
+        if (!pose) { pose = p.nearby(i, 2); ghost = !!pose; }
+        if (pose) drawBody(ctx, m, pose, ghost, SPORTS[this.sport]);
+      }
+      drawMine(ctx, m, p.angles, p.draft);
+    },
+    poseNoteText(p) {
+      if (this.angleArmed && p.idx === this.active) return ['Tap one end of the angle.', 'Now tap the corner.', 'Now tap the other end.'][Math.min(2, p.draft.length)];
+      if (!this.bodyOn) return '';
+      if (Pose.state === 'loading') return 'Getting body tracking ready. First time only: ' + Math.min(99, Math.round(100 * Pose.got / POSE_BYTES)) + '% of 23 MB.';
+      if (Pose.state === 'failed') return this.poseFailText();
+      if (Pose.state !== 'ready' || !p.video.paused) return '';
+      const i = p.shown();
+      if (p.poses.has(i)) return '';
+      if (p.poseRunning === i && performance.now() - p.poseStarted > 250) return 'Finding the athlete…';
+      if (p.poseNone.has(i) && p.poseRunning !== i && p.poseTimerFor !== i) {
+        return p.isSample ? 'The sample has no player in it. Open one of your own clips to try Body.' : 'No one found here. Pinch to zoom in on the athlete.';
+      }
+      return '';
+    },
+    renderBodyRead(d, ready) {
+      const br = this.el.bodyRead;
+      br.hidden = !(this.bodyOn && ready && Pose.state === 'ready');
+      if (br.hidden) return;
+      const i = d.shown();
+      const pose = d.poses.get(i) || (!d.video.paused ? d.nearby(i, 3) : null);
+      let html;
+      if (!pose) html = '<span class="br-item">Angles show once the athlete is found.</span>';
+      else {
+        const mm = measures(pose.pts);
+        const f = (x) => x == null ? '–' : Math.round(x) + '°';
+        html = SPORTS[this.sport].read.map(([name, a, b]) => b
+          ? '<span class="br-item"><span class="br-k">' + name + '</span><span class="br-s br-l">L</span><span class="br-v">' + f(mm[a]) + '</span><span class="br-s br-r">R</span><span class="br-v">' + f(mm[b]) + '</span></span>'
+          : '<span class="br-item"><span class="br-k">' + name + '</span><span class="br-v">' + f(mm[a]) + '</span></span>').join('');
+      }
+      if (html !== this.bodyReadHtml) { br.innerHTML = html; this.bodyReadHtml = html; }
     },
 
     /* sound, full screen, help, messages */
@@ -1363,6 +1990,9 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
         case '0': case 'z': case 'Z': { const d = this.driver(); if (d) d.resetZoom(); break; }
         case 'o': case 'O': this.openPicker(null); break;
         case 'c': case 'C': this.toggleCompare(); break;
+        case 'b': case 'B': this.toggleBody(); break;
+        case 'a': case 'A': this.toggleAngleTool(); break;
+        case 'Escape': if (this.angleArmed) this.toggleAngleTool(); else handled = false; break;
         default: handled = false;
       }
       if (handled) e.preventDefault();
@@ -1412,7 +2042,13 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
     render() {
       const el = this.el, d = this.driver(), ready = !!d && d.state === 'ready';
       el.app.dataset.mode = this.mode;
-      this.players.forEach(p => this.renderPane(p));
+      this.players.forEach(p => {
+        this.renderPane(p);
+        this.drawOverlay(p);
+        const note = p.state === 'ready' ? this.poseNoteText(p) : '';
+        p.note.hidden = !note;
+        if (note && p.note.firstElementChild.textContent !== note) p.note.firstElementChild.textContent = note;
+      });
       const i = ready ? d.shown() : 0;
       if (ready) {
         el.frame.textContent = nf.format(i + 1);
@@ -1474,10 +2110,21 @@ button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink
       el.sound.setAttribute('aria-pressed', String(this.soundOn));
       el.sound.setAttribute('aria-label', this.soundOn ? 'Sound on' : 'Sound off');
       el.tip.hidden = !(ready && !d.isSample && d.fps < 45 && !this.tipDismissed);
+
+      const sp = SPORTS[this.sport], other = SPORTS[this.sport === 'ski' ? 'cricket' : 'ski'];
+      el.bodyBtn.setAttribute('aria-pressed', String(this.bodyOn));
+      el.sportBtn.querySelector('.lbl').textContent = sp.name;
+      el.sportBtn.setAttribute('aria-label', 'Angles for ' + sp.name.toLowerCase() + '. Tap for ' + other.name.toLowerCase() + '.');
+      el.angleBtn.disabled = !ready;
+      el.angleBtn.setAttribute('aria-pressed', String(this.angleArmed));
+      el.bodyClear.disabled = !(ready && (d.angles.length || d.draft.length || d.hasEdits));
+      this.renderBodyRead(d, ready);
       this.jog.draw();
+      this.poseTick();
     }
   };
 
+  if (window.SPORT_REPLAY_TEST) window.SportReplayTest = { App, Pose, measures, bodyBox };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
   else App.init();
 })();
